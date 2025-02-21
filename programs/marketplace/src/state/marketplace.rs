@@ -1,4 +1,4 @@
-use anchor_lang::prelude::*;
+use anchor_lang::{prelude::*, Discriminator};
 
 #[account]
 pub struct Marketplace {
@@ -8,7 +8,5 @@ pub struct Marketplace {
 }
 
 impl Marketplace {
-    pub fn init_space(name: &str) -> usize {
-        1 + 32 + (4 + name.len())
-    }
+    pub const MIN_SPACE: usize = Marketplace::DISCRIMINATOR.len() + 1 + 32 + 4;
 }

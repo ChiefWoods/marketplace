@@ -1,5 +1,5 @@
 use crate::{constants::*, state::*};
-use anchor_lang::{prelude::*, Discriminator};
+use anchor_lang::prelude::*;
 
 #[derive(Accounts)]
 #[instruction(name: String)]
@@ -9,7 +9,7 @@ pub struct Initialize<'info> {
     #[account(
         init,
         payer = maker,
-        space = Marketplace::DISCRIMINATOR.len() + Marketplace::init_space(&name),
+        space = Marketplace::MIN_SPACE + name.len(),
         seeds = [MARKETPLACE_SEED, name.as_bytes().as_ref()],
         bump,
     )]
