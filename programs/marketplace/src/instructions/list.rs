@@ -1,10 +1,11 @@
-use crate::{constants::*, state::*};
-use anchor_lang::{prelude::*, Discriminator};
+use anchor_lang::prelude::*;
 use anchor_spl::{
     associated_token::AssociatedToken,
     metadata::{MasterEditionAccount, Metadata, MetadataAccount},
     token_interface::{transfer_checked, Mint, TokenAccount, TokenInterface, TransferChecked},
 };
+
+use crate::{Listing, Marketplace, EDITION_SEED, LISTING_SEED, MARKETPLACE_SEED, METADATA_SEED};
 
 #[derive(Accounts)]
 pub struct List<'info> {
@@ -71,7 +72,7 @@ pub struct List<'info> {
 }
 
 impl List<'_> {
-    pub fn list(ctx: Context<List>, price: u64) -> Result<()> {
+    pub fn handler(ctx: Context<List>, price: u64) -> Result<()> {
         ctx.accounts.listing.set_inner(Listing {
             bump: ctx.bumps.listing,
             price,

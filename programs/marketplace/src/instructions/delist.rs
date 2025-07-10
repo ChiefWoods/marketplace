@@ -1,4 +1,3 @@
-use crate::{constants::*, state::*};
 use anchor_lang::prelude::*;
 use anchor_spl::{
     associated_token::AssociatedToken,
@@ -8,6 +7,8 @@ use anchor_spl::{
         TransferChecked,
     },
 };
+
+use crate::{Listing, Marketplace, LISTING_SEED, MARKETPLACE_SEED};
 
 #[derive(Accounts)]
 pub struct Delist<'info> {
@@ -50,7 +51,7 @@ pub struct Delist<'info> {
 }
 
 impl Delist<'_> {
-    pub fn delist(ctx: Context<Delist>) -> Result<()> {
+    pub fn handler(ctx: Context<Delist>) -> Result<()> {
         let signer_seeds: &[&[&[u8]]] = &[&[
             LISTING_SEED,
             &ctx.accounts.marketplace.key().to_bytes(),

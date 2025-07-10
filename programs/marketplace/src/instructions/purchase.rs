@@ -1,4 +1,3 @@
-use crate::{constants::*, state::*};
 use anchor_lang::{
     prelude::*,
     system_program::{transfer, Transfer},
@@ -10,6 +9,8 @@ use anchor_spl::{
         TransferChecked,
     },
 };
+
+use crate::{Listing, Marketplace, LISTING_SEED, MARKETPLACE_SEED};
 
 #[derive(Accounts)]
 pub struct Purchase<'info> {
@@ -54,7 +55,7 @@ pub struct Purchase<'info> {
 }
 
 impl Purchase<'_> {
-    pub fn purchase(ctx: Context<Purchase>) -> Result<()> {
+    pub fn handler(ctx: Context<Purchase>) -> Result<()> {
         transfer(
             CpiContext::new(
                 ctx.accounts.system_program.to_account_info(),

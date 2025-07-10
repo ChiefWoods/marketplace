@@ -1,5 +1,6 @@
-use crate::{constants::*, state::*};
 use anchor_lang::prelude::*;
+
+use crate::{Marketplace, MARKETPLACE_SEED};
 
 #[derive(Accounts)]
 #[instruction(name: String)]
@@ -18,7 +19,7 @@ pub struct Initialize<'info> {
 }
 
 impl Initialize<'_> {
-    pub fn initialize(ctx: Context<Initialize>, name: String) -> Result<()> {
+    pub fn handler(ctx: Context<Initialize>, name: String) -> Result<()> {
         ctx.accounts.marketplace.set_inner(Marketplace {
             bump: ctx.bumps.marketplace,
             maker: ctx.accounts.maker.key(),
