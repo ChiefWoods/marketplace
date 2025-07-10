@@ -1,9 +1,13 @@
 import { Program } from "@coral-xyz/anchor";
-import { BankrunProvider } from "anchor-bankrun";
-import { AddedAccount, startAnchor } from "solana-bankrun";
 import { Marketplace } from "../target/types/marketplace";
 import idl from "../target/idl/marketplace.json";
-import { clusterApiUrl, Connection, PublicKey } from "@solana/web3.js";
+import {
+  clusterApiUrl,
+  Connection,
+  LAMPORTS_PER_SOL,
+  PublicKey,
+  SystemProgram,
+} from "@solana/web3.js";
 import { MPL_TOKEN_METADATA_PROGRAM_ID } from "@metaplex-foundation/mpl-token-metadata";
 import {
   collectionAddress,
@@ -12,8 +16,10 @@ import {
   mintAddress,
   mintAtaAddress,
 } from "./constants";
+import { AccountInfoBytes } from "litesvm";
+import { fromWorkspace, LiteSVMProvider } from "anchor-litesvm";
 
-const connection = new Connection(clusterApiUrl("mainnet-beta"), "confirmed");
+const connection = new Connection(clusterApiUrl("devnet"), "confirmed");
 
 const [mintInfo, collectionInfo, masterEditionInfo, metadataInfo, mintAtaInfo] =
   await connection.getMultipleAccountsInfo([
@@ -24,45 +30,54 @@ const [mintInfo, collectionInfo, masterEditionInfo, metadataInfo, mintAtaInfo] =
     mintAtaAddress,
   ]);
 
-export async function getBankrunSetup(accounts: AddedAccount[] = []) {
-  const context = await startAnchor(
-    "",
-    [
-      {
-        name: "mpl_token_metadata",
-        programId: new PublicKey(MPL_TOKEN_METADATA_PROGRAM_ID),
-      },
-    ],
-    [
-      ...accounts,
-      {
-        address: mintAddress,
-        info: mintInfo,
-      },
-      {
-        address: collectionAddress,
-        info: collectionInfo,
-      },
-      {
-        address: masterEditionAddress,
-        info: masterEditionInfo,
-      },
-      {
-        address: metadataAddress,
-        info: metadataInfo,
-      },
-      {
-        address: mintAtaAddress,
-        info: mintAtaInfo,
-      },
-    ]
-  );
-  const provider = new BankrunProvider(context);
-  const program = new Program(idl as Marketplace, provider);
+const addressInfoMap = new Map<PublicKey, AccountInfoBytes>([
+  [mintAddress, mintInfo],
+  [collectionAddress, collectionInfo],
+  [masterEditionAddress, masterEditionInfo],
+  [metadataAddress, metadataInfo],
+  [mintAtaAddress, mintAtaInfo],
+]);
 
+export async function getSetup(
+  accounts: { pubkey: PublicKey; account: AccountInfoBytes }[] = [],
+) {
+  const litesvm = fromWorkspace("./");
+  litesvm.addProgramFromFile(
+    new PublicKey(MPL_TOKEN_METADATA_PROGRAM_ID),
+    "./tests/fixtures/mpl_token_metadata.so",
+  );
+
+  for (const [pubkey, accountInfo] of addressInfoMap.entries()) {
+    litesvm.setAccount(pubkey, {
+      data: accountInfo.data,
+      executable: accountInfo.executable,
+      lamports: accountInfo.lamports,
+      owner: accountInfo.owner,
+    });
+  }
+
+  for (const { pubkey, account } of accounts) {
+    litesvm.setAccount(new PublicKey(pubkey), {
+      data: account.data,
+      executable: account.executable,
+      lamports: account.lamports,
+      owner: new PublicKey(account.owner),
+    });
+  }
+
+  const provider = new LiteSVMProvider(litesvm);
+  const program = new Program<Marketplace>(idl, provider);
+
+  return { litesvm, provider, program };
+}
+
+export function fundedSystemAccountInfo(
+  lamports: number = LAMPORTS_PER_SOL,
+): AccountInfoBytes {
   return {
-    context,
-    provider,
-    program,
+    lamports,
+    data: Buffer.alloc(0),
+    owner: SystemProgram.programId,
+    executable: false,
   };
 }

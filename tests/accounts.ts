@@ -2,16 +2,16 @@ import { PublicKey } from "@solana/web3.js";
 import { Marketplace } from "../target/types/marketplace";
 import { Program } from "@coral-xyz/anchor";
 
-export async function getMarketplaceAcc(
+export async function fetchMarketplaceAcc(
   program: Program<Marketplace>,
-  marketplacePda: PublicKey
+  marketplacePda: PublicKey,
 ) {
   return await program.account.marketplace.fetchNullable(marketplacePda);
 }
 
-export async function getListingAcc(
+export async function fetchListingAcc(
   program: Program<Marketplace>,
-  listingPda: PublicKey
+  listingPda: PublicKey,
 ) {
   return await program.account.listing.fetchNullable(listingPda);
 }

@@ -1,15 +1,7 @@
-import { BankrunProvider } from "anchor-bankrun";
 import { beforeEach, describe, expect, test } from "bun:test";
-import { ProgramTestContext } from "solana-bankrun";
 import { Marketplace } from "../../target/types/marketplace";
 import { BN, Program } from "@coral-xyz/anchor";
-import { getBankrunSetup } from "../setup";
-import {
-  Keypair,
-  LAMPORTS_PER_SOL,
-  PublicKey,
-  SystemProgram,
-} from "@solana/web3.js";
+import { Keypair, LAMPORTS_PER_SOL, PublicKey } from "@solana/web3.js";
 import {
   ACCOUNT_SIZE,
   AccountLayout,
@@ -18,12 +10,15 @@ import {
   TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
 import { collectionAddress, mintAddress } from "../constants";
-import { getListingPdaAndBump, getMarketplacePdaAndBump } from "../pda";
+import { getListingPda, getMarketplacePda } from "../pda";
+import { fundedSystemAccountInfo, getSetup } from "../setup";
+import { LiteSVM } from "litesvm";
+import { LiteSVMProvider } from "anchor-litesvm";
 
 describe("delist", () => {
-  let { context, provider, program } = {} as {
-    context: ProgramTestContext;
-    provider: BankrunProvider;
+  let { litesvm, provider, program } = {} as {
+    litesvm: LiteSVM;
+    provider: LiteSVMProvider;
     program: Program<Marketplace>;
   };
 
@@ -32,13 +27,13 @@ describe("delist", () => {
     mintAddress,
     maker.publicKey,
     false,
-    TOKEN_PROGRAM_ID
+    TOKEN_PROGRAM_ID,
   );
 
   const marketplaceName = "Marketplace A";
-  const [marketplacePda] = getMarketplacePdaAndBump(marketplaceName);
+  const marketplacePda = getMarketplacePda(marketplaceName);
 
-  const [listingPda] = getListingPdaAndBump(marketplacePda, mintAddress);
+  const listingPda = getListingPda(marketplacePda, mintAddress);
 
   beforeEach(async () => {
     const makerAtaData = Buffer.alloc(ACCOUNT_SIZE);
@@ -56,22 +51,17 @@ describe("delist", () => {
         closeAuthorityOption: 0,
         closeAuthority: PublicKey.default,
       },
-      makerAtaData
+      makerAtaData,
     );
 
-    ({ context, provider, program } = await getBankrunSetup([
+    ({ litesvm, provider, program } = await getSetup([
       {
-        address: maker.publicKey,
-        info: {
-          lamports: LAMPORTS_PER_SOL * 5,
-          data: Buffer.alloc(0),
-          owner: SystemProgram.programId,
-          executable: false,
-        },
+        pubkey: maker.publicKey,
+        account: fundedSystemAccountInfo(),
       },
       {
-        address: makerAta,
-        info: {
+        pubkey: makerAta,
+        account: {
           lamports: LAMPORTS_PER_SOL,
           data: makerAtaData,
           owner: TOKEN_PROGRAM_ID,
@@ -89,7 +79,7 @@ describe("delist", () => {
       .rpc();
 
     await program.methods
-      .list(new BN(LAMPORTS_PER_SOL))
+      .list(new BN(0.5 * LAMPORTS_PER_SOL))
       .accountsPartial({
         maker: maker.publicKey,
         mint: mintAddress,
@@ -113,15 +103,15 @@ describe("delist", () => {
       .signers([maker])
       .rpc();
 
-    const listingAcc = await context.banksClient.getAccount(listingPda);
+    const listingAcc = litesvm.getBalance(listingPda);
 
-    expect(listingAcc).toBeNull();
+    expect(listingAcc).toBe(0n);
 
     const makerAtaAcc = await getAccount(
       provider.connection,
       makerAta,
       "processed",
-      TOKEN_PROGRAM_ID
+      TOKEN_PROGRAM_ID,
     );
 
     expect(Number(makerAtaAcc.amount)).toEqual(1);
@@ -130,10 +120,10 @@ describe("delist", () => {
       mintAddress,
       listingPda,
       true,
-      TOKEN_PROGRAM_ID
+      TOKEN_PROGRAM_ID,
     );
-    const vaultAcc = await context.banksClient.getAccount(vaultPda);
+    const vaultAcc = litesvm.getBalance(vaultPda);
 
-    expect(vaultAcc).toBeNull();
+    expect(vaultAcc).toBe(0n);
   });
 });
